@@ -102,11 +102,15 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
     {
         get
         {
-            return "";
+            return exec<string>(async Task<object> (Proxy p) =>
+            {
+                await Task.CompletedTask;
+                return p.page.Url;
+            });
         }
         set
         {
-
+            GoToUrl(Url);
         }
     }
 
@@ -169,6 +173,11 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
         }
     }
 
+    // // window handles are unique string ids assigned the window.
+    // https://www.selenium.dev/documentation/webdriver/interactions/windows/
+    // Clicking a link which opens in a new window will focus the new window or tab on screen, but WebDriver will not know which window the Operating System considers active. To work with the new window you will need to switch to it. If you have only two tabs or windows open, and you know which window you start with, by the process of elimination you can loop over both windows or tabs that WebDriver can see, and switch to the one which is not the original.
+
+
     public string CurrentWindowHandle
     {
         get
@@ -188,17 +197,13 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
     public void Close()
     {
         exec<bool>(async Task<object> (Proxy p) =>
-{
-    await p.page.CloseAsync();
-    return true;
-});
+        {
+            await p.page.CloseAsync();
+            return true;
+        });
     }
 
-    public static string locatorString(By by)
-    {
 
-        return "";
-    }
     public IWebElement FindElement(By by)
     {
         return FindElement(by, null);
@@ -208,7 +213,7 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
     {
         return exec<PWebElement>(async Task<object> (Proxy p) =>
          {
-             var h = await p.page.WaitForSelectorAsync(locatorString(by), new()
+             var h = await p.page.WaitForSelectorAsync(by.description, new()
              {
                  Timeout = 30000,
                  State = WaitForSelectorState.Visible,
@@ -252,30 +257,74 @@ public class PWebElement : IWebElement
     // we might need some frame sudo reference for context?
     PlaywrightDriver driver;
     IElementHandle h;
-    public string tagName = "", text = "";
-    public bool enabled = false, selected = false, displayed = false;
-    public Point location = new Point(0, 0);
-    public Size size = new Size(0, 0);
 
+    PWebElement(
 
-    public PWebElement(PlaywrightDriver driver, IElementHandle h)
-    {
-        this.driver = driver;
-        this.h = h;
+    public string TagName {
+        get
+        {
+            return driver.exec<string>(async Task<object> (Proxy p) =>
+            {
+                return await h.GetPropertyAsync("tagName");
+            });
+        }
     }
-    public string TagName => tagName;
+    public string Text  {
+        get
+        {
+            return driver.exec<string>(async Task<object> (Proxy p) =>
+            {
+                return await h.TextContentAsync()??"";
+            });
+        }
+    }
+    public bool Enabled {
+        get
+        {
+            return driver.exec<bool>(async Task<object> (Proxy p) =>
+            {
+                return true;
+            });
+        }
+    }
+    public bool Selected {
+        get
+        {
+            return driver.exec<bool>(async Task<object> (Proxy p) =>
+            {
+                return true;
+            });
+        }
+    }
 
-    public string Text => text;
+    public Point Location{
+        get
+        {
+            return driver.exec<Point>(async Task<object> (Proxy p) =>
+            {
+                return true;
+            });
+        }
+    }
 
-    public bool Enabled => enabled;
-
-    public bool Selected => selected;
-
-    public Point Location => location;
-
-    public Size Size => size;
-
-    public bool Displayed => displayed;
+    public Size Size {
+        get
+        {
+            return driver.exec<Size>(async Task<object> (Proxy p) =>
+            {
+                return true;
+            });
+        }
+    }
+    public bool Displayed {
+        get
+        {
+            return driver.exec<bool>(async Task<object> (Proxy p) =>
+            {
+                return true;
+            });
+        }
+    }
 
     public void Clear()
     {
@@ -362,9 +411,6 @@ public class PWebElement : IWebElement
     {
         return this;
     }
-
-
-
 }
 
 // these are auto dismissed by playwright, but can be handled by event.
