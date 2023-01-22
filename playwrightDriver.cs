@@ -162,7 +162,10 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
     {
         get
         {
-            return "";
+            return exec<string>(async Task<object> (Proxy p) =>
+            {
+                return await p.page.ContentAsync();
+            });
         }
     }
 
@@ -240,7 +243,7 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
 
     public ITargetLocator SwitchTo()
     {
-        return new PlaywrightTargetLocator();
+        return new PlaywrightTargetLocator(this);
     }
 }
 
@@ -278,7 +281,7 @@ public class PWebElement : IWebElement
     {
         SendKeys("");
     }
-     public void SendKeys(string text)
+    public void SendKeys(string text)
     {
         driver.exec<bool>(async Task<object> (Proxy p) =>
         {
@@ -304,7 +307,7 @@ public class PWebElement : IWebElement
             await h.ClickAsync();
             return true;
         });
-    
+
     }
 
     public IWebElement FindElement(By by)
@@ -317,62 +320,96 @@ public class PWebElement : IWebElement
         return driver.FindElements(by, h);
     }
 
+
+
+    // java: System.out.println(page.locator("body").evaluate("element => getComputedStyle(element)['background-color']"));
+    public string GetCssValue(string propertyName)
+    {
+        // window.getComputedStyle(e).getPropertyValue("color")
+        return driver.exec<string>(async Task<object> (Proxy p) =>
+        {
+            return await p.page.Locator("div").EvaluateAsync($"e => window.getComputedStyle(e).{propertyName}");
+        });
+    }
+
+    // deprecated, 
     public string GetAttribute(string attributeName)
     {
         return driver.exec<string>(async Task<object> (Proxy p) =>
         {
-            return await h.GetAttributeAsync(attributeName)??"";
+            return await h.GetAttributeAsync(attributeName) ?? "";
         });
     }
-
-    public string GetCssValue(string propertyName)
-    {
-        return driver.exec<string>(async Task<object> (Proxy p) =>
-        {
-            return await h.GetPropertyAsync(propertyName)??"";
-        });
-    }
-
     public string GetDomAttribute(string attributeName)
     {
-        throw new NotImplementedException();
+        return driver.exec<string>(async Task<object> (Proxy p) =>
+      {
+          return await h.GetAttributeAsync(attributeName) ?? "";
+      });
     }
 
     public string GetDomProperty(string propertyName)
     {
-        throw new NotImplementedException();
+        return driver.exec<string>(async Task<object> (Proxy p) =>
+         {
+             var o = await h.GetPropertyAsync(propertyName);
+             var s = o.ToString();
+             return s!;
+         });
     }
 
     public ISearchContext GetShadowRoot()
     {
-        throw new NotImplementedException();
+        return this;
     }
 
 
 
 }
 
+// these are auto dismissed by playwright, but can be handled by event.
+// page.Dialog += async (_, dialog) =>
+// {
+//     System.Console.WriteLine(dialog.Message);
+//     await dialog.DismissAsync();
+// };
 public class PwAlert : IAlert
 {
-    public string Text => throw new NotImplementedException();
+    PlaywrightDriver driver;
+    public PwAlert(PlaywrightDriver driver)
+    {
+        this.driver = driver;
+    }
+    public string Text
+    {
+        get
+        {
+            return "";
+        }
+    }
 
     public void Accept()
     {
-        throw new NotImplementedException();
+
     }
 
     public void Dismiss()
     {
-        throw new NotImplementedException();
+
     }
 
     public void SendKeys(string keysToSend)
     {
-        throw new NotImplementedException();
+
     }
 }
 public class PlaywrightTargetLocator : ITargetLocator
 {
+    PlaywrightDriver driver;
+    public PlaywrightTargetLocator(PlaywrightDriver driver)
+    {
+        this.driver = driver;
+    }
 
     public IWebElement ActiveElement()
     {
@@ -381,42 +418,42 @@ public class PlaywrightTargetLocator : ITargetLocator
 
     public IAlert Alert()
     {
-        return new PwAlert();
+        return new PwAlert(driver);
     }
 
     public IWebDriver DefaultContent()
     {
-        throw new NotImplementedException();
+        return driver;
     }
 
     public IWebDriver Frame(int frameIndex)
     {
-        throw new NotImplementedException();
+        return driver;
     }
 
     public IWebDriver Frame(string frameName)
     {
-        throw new NotImplementedException();
+        return driver;
     }
 
     public IWebDriver Frame(IWebElement frameElement)
     {
-        throw new NotImplementedException();
+        return driver;
     }
 
     public IWebDriver NewWindow(WindowType typeHint)
     {
-        throw new NotImplementedException();
+        return driver;
     }
 
     public IWebDriver ParentFrame()
     {
-        throw new NotImplementedException();
+        return driver;
     }
 
     public IWebDriver Window(string windowName)
     {
-        throw new NotImplementedException();
+        return driver;
     }
 }
 
