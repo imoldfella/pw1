@@ -58,7 +58,15 @@ public class UnitTest2
             var x = driver.Title;
             StringAssert.Matches(x, new Regex("Playwright"));
 
-            By.LinkText("Get started");
+            var getStarted = driver.FindElement(By.LinkText("Get started"));
+            StringAssert.Equals(getStarted.GetAttribute("href"),"/docs/intro");
+            getStarted.Click();
+
+            // this needs to be a wait? how in selenium?
+            // noted that for compatibility we may need expected conditions to work even though the selenium team states lambdas are to be preferred.
+            new WebDriverWait(driver,TimeSpan.FromSeconds(30)).Until(ExpectedConditions.UrlContains("intro"));
+            
+             StringAssert.Matches(driver.Url, new Regex(".*intro"));
         }
     }
 

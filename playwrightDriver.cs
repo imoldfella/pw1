@@ -190,6 +190,13 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
     {
         get
         {
+            // https://playwright.dev/dotnet/docs/pages#multiple-pages
+            // Get all new pages (including popups) in the context
+            // context.Page += async  (_, page) => {
+            //     await page.WaitForLoadStateAsync();
+            //     Console.WriteLine(await page.TitleAsync());
+            // };
+
             return new ReadOnlyCollection<string>(new List<string>());
         }
     }
@@ -258,7 +265,11 @@ public class PWebElement : IWebElement
     PlaywrightDriver driver;
     IElementHandle h;
 
-    PWebElement(
+    public PWebElement(PlaywrightDriver driver, IElementHandle h)
+    {
+        this.driver = driver;
+        this.h = h;
+    }
 
     public string TagName {
         get
@@ -283,7 +294,7 @@ public class PWebElement : IWebElement
         {
             return driver.exec<bool>(async Task<object> (Proxy p) =>
             {
-                return true;
+                return await h.IsEnabledAsync();
             });
         }
     }
@@ -292,6 +303,7 @@ public class PWebElement : IWebElement
         {
             return driver.exec<bool>(async Task<object> (Proxy p) =>
             {
+                await Task.CompletedTask;
                 return true;
             });
         }
@@ -302,7 +314,8 @@ public class PWebElement : IWebElement
         {
             return driver.exec<Point>(async Task<object> (Proxy p) =>
             {
-                return true;
+                var o =  await h.BoundingBoxAsync();
+                return new Point((int)o!.X, (int)o.Y);
             });
         }
     }
@@ -312,7 +325,8 @@ public class PWebElement : IWebElement
         {
             return driver.exec<Size>(async Task<object> (Proxy p) =>
             {
-                return true;
+                var o = await h.BoundingBoxAsync();
+                return new Size((int)o!.Width, (int)o.Height);
             });
         }
     }
@@ -321,7 +335,7 @@ public class PWebElement : IWebElement
         {
             return driver.exec<bool>(async Task<object> (Proxy p) =>
             {
-                return true;
+                return await h.IsVisibleAsync();
             });
         }
     }
@@ -449,6 +463,15 @@ public class PwAlert : IAlert
 
     }
 }
+
+// playwright has a very different model of windows.
+
+// // Get page after a specific action (e.g. clicking a link)
+// var newPage = await context.RunAndWaitForPageAsync(async () =>
+// {
+//     await page.GetByText("open new tab").ClickAsync();
+// });
+
 public class PlaywrightTargetLocator : ITargetLocator
 {
     PlaywrightDriver driver;
