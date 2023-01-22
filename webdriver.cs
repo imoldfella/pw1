@@ -2,6 +2,8 @@ namespace pw1;
 
 using System.Collections.ObjectModel;
 using System.Drawing;
+
+// modified for nullable
 public interface IWebElement : ISearchContext
 {
     string TagName { get; }
@@ -22,6 +24,8 @@ public interface IWebElement : ISearchContext
     void SendKeys(string text);
     void Submit();
 }
+
+// each webelement is a search context.
 public interface ISearchContext
 {
     IWebElement FindElement(By by);

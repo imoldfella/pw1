@@ -57,6 +57,8 @@ public class UnitTest2
             driver.Navigate().GoToUrl("https://playwright.dev");
             var x = driver.Title;
             StringAssert.Matches(x, new Regex("Playwright"));
+
+            By.LinkText("Get started");
         }
     }
 
