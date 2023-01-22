@@ -5,34 +5,83 @@ using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
 
-[TestClass]
-public class UnitTest1 : PageTest
+public class MyContext : IDisposable
 {
-    [TestMethod]
-    public void WithOld()
+
+
+    // compatible with WebDriver - synchronous
+    public PlaywrightDriver driver;
+    public MyContext(PlaywrightDriver driver)
     {
-        var d = new PlaywrightDriver();
-        d.Navigate().GoToUrl("https://playwright.dev");
-        StringAssert.Matches(d.Title, new Regex("Playwright"));
+        this.driver = driver;
+    }
+    public static async Task<MyContext> create(TestContext t)
+    {
+        await Task.CompletedTask;
+        return new MyContext(new PlaywrightDriver());
+    }
+
+    public void Dispose()
+    {
+    }
+}
+
+[TestClass]
+public class UnitTest2
+{
+    public TestContext? TestContext { get; set; }
+
+    // build a class that returns the residual steps
+    public class Background
+    {
+        // some step that may be reused.
+        public MyContext step;
+        public Background(MyContext context)
+        {
+            this.step = context;
+        }
+    }
+    static public async Task<Background> background(MyContext x)
+    {
+        await Task.CompletedTask;
+        //step = x;
+
+        return new Background(x);
+        // exec steps, but leave the return the initalized steps.
     }
     [TestMethod]
-    public async Task HomepageHasPlaywrightInTitleAndGetStartedLinkLinkingtoTheIntroPage()
+    public void Test1()
     {
-        await Page.GotoAsync("https://playwright.dev");
+        using (var driver = new PlaywrightDriver())
+        {
+            driver.Navigate().GoToUrl("https://playwright.dev");
+            var x = driver.Title;
+            StringAssert.Matches(x, new Regex("Playwright"));
+        }
+    }
 
-        // Expect a title "to contain" a substring.
-        await Expect(Page).ToHaveTitleAsync(new Regex("Playwright"));
+    [TestClass]
+    public class UnitTest1 : PageTest
+    {
+        [TestMethod]
+        public async Task HomepageHasPlaywrightInTitleAndGetStartedLinkLinkingtoTheIntroPage()
+        {
+            await Page.GotoAsync("https://playwright.dev");
 
-        // create a locator
-        var getStarted = Page.GetByRole(AriaRole.Link, new() { Name = "Get started" });
+            // Expect a title "to contain" a substring.
+            await Expect(Page).ToHaveTitleAsync(new Regex("Playwright"));
 
-        // Expect an attribute "to be strictly equal" to the value.
-        await Expect(getStarted).ToHaveAttributeAsync("href", "/docs/intro");
+            // create a locator
+            var getStarted = Page.GetByRole(AriaRole.Link, new() { Name = "Get started" });
 
-        // Click the get started link.
-        await getStarted.ClickAsync();
+            // Expect an attribute "to be strictly equal" to the value.
+            await Expect(getStarted).ToHaveAttributeAsync("href", "/docs/intro");
 
-        // Expects the URL to contain intro.
-        await Expect(Page).ToHaveURLAsync(new Regex(".*intro"));
+            // Click the get started link.
+            await getStarted.ClickAsync();
+
+            // Expects the URL to contain intro.
+            await Expect(Page).ToHaveURLAsync(new Regex(".*intro"));
+        }
     }
 }
