@@ -1,11 +1,13 @@
 namespace pw1;
 
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Interactions;
 using ProxyFn = Func<Proxy, Task<object>>;
 public class Proxy : IAsyncDisposable
 {
@@ -35,7 +37,10 @@ public class Proxy : IAsyncDisposable
         playwright.Dispose();
     }
 }
-public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
+public class PlaywrightDriver : IWebDriver, INavigation, IDisposable, IActionExecutor,
+ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
+//,ISupportsPrint, IAllowsFileDetection, IHasCapabilities, IHasCommandExecutor, IHasSessionId, ICustomDriverCommandExecutor, IHasVirtualAuthenticator
+
 {
     Semaphore rpc = new Semaphore(0, 1);
     Semaphore reply = new Semaphore(0, 1);
@@ -93,7 +98,7 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
         return (T)proxy!.rvalue!;
     }
 
-    public PlaywrightDriver(ChromeOptions? options=null)
+    public PlaywrightDriver(ChromeOptions? options = null)
     {
         Task.Run(async () => await ThreadProc(this));
         reply.WaitOne();
@@ -202,6 +207,8 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
         }
     }
 
+    bool IActionExecutor.IsActionExecutor => true;
+
     public void Close()
     {
         exec<bool>(async Task<object> (Proxy p) =>
@@ -238,7 +245,7 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
     {
         return exec<ReadOnlyCollection<IWebElement>>(async Task<object> (Proxy p) =>
         {
-            var a = await p.page.QuerySelectorAllAsync("");
+            var a = await p.page.QuerySelectorAllAsync(by.description);
             var lst = a.Select(e => (IWebElement)new PWebElement(this, e)).ToList();
             return new ReadOnlyCollection<IWebElement>(lst);
         })!;
@@ -258,9 +265,91 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
     {
         return new PlaywrightTargetLocator(this);
     }
+
+    void IActionExecutor.PerformActions(IList<ActionSequence> actionSequenceList)
+    {
+        if (actionSequenceList == null)
+        {
+            throw new ArgumentNullException(nameof(actionSequenceList), "List of action sequences must not be null");
+        }
+
+        List<object> objectList = new List<object>();
+        foreach (ActionSequence sequence in actionSequenceList)
+        {
+            objectList.Add(sequence.ToDictionary());
+        }
+
+        Dictionary<string, object> parameters = new Dictionary<string, object>();
+        parameters["actions"] = objectList;
+        this.Execute(DriverCommand.Actions, parameters);
+    }
+    SessionId sessionId = new SessionId("playwright");
+    private ICommandExecutor executor;
+    protected virtual Response Execute(string driverCommandToExecute, Dictionary<string, object> parameters)
+    {
+        Command commandToExecute = new Command(this.sessionId, driverCommandToExecute, parameters);
+
+        Response commandResponse;
+
+        try
+        {
+            commandResponse = this.executor.Execute(commandToExecute);
+        }
+        catch (System.Net.Http.HttpRequestException e)
+        {
+            commandResponse = new Response
+            {
+                Status = WebDriverResult.UnhandledError,
+                Value = e
+            };
+        }
+
+        if (commandResponse.Status != WebDriverResult.Success)
+        {
+            throw new WebDriverException("The " + commandToExecute + " command returned an unexpected error. ");
+            //UnpackAndThrowOnError(commandResponse, driverCommandToExecute);
+        }
+
+        return commandResponse;
+    }
+
+    void IActionExecutor.ResetInputState()
+    {
+        this.Execute(DriverCommand.CancelActions, null);
+    }
+
+    public Screenshot GetScreenshot()
+    {
+        throw new NotImplementedException();
+    }
+
+    public IWebElement FindElement(string mechanism, string value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ReadOnlyCollection<IWebElement> FindElements(string mechanism, string value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public object ExecuteScript(string script, params object[] args)
+    {
+        throw new NotImplementedException();
+    }
+
+    public object ExecuteScript(PinnedScript script, params object[] args)
+    {
+        throw new NotImplementedException();
+    }
+
+    public object ExecuteAsyncScript(string script, params object[] args)
+    {
+        throw new NotImplementedException();
+    }
 }
 
-public class PWebElement : IWebElement
+public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable, ITakesScreenshot, IWebDriverObjectReference
 {
     // we might need some frame sudo reference for context?
     PlaywrightDriver driver;
@@ -272,7 +361,8 @@ public class PWebElement : IWebElement
         this.h = h;
     }
 
-    public string TagName {
+    public string TagName
+    {
         get
         {
             return driver.exec<string>(async Task<object> (Proxy p) =>
@@ -281,16 +371,18 @@ public class PWebElement : IWebElement
             });
         }
     }
-    public string Text  {
+    public string Text
+    {
         get
         {
             return driver.exec<string>(async Task<object> (Proxy p) =>
             {
-                return await h.TextContentAsync()??"";
+                return await h.TextContentAsync() ?? "";
             });
         }
     }
-    public bool Enabled {
+    public bool Enabled
+    {
         get
         {
             return driver.exec<bool>(async Task<object> (Proxy p) =>
@@ -299,7 +391,8 @@ public class PWebElement : IWebElement
             });
         }
     }
-    public bool Selected {
+    public bool Selected
+    {
         get
         {
             return driver.exec<bool>(async Task<object> (Proxy p) =>
@@ -310,18 +403,20 @@ public class PWebElement : IWebElement
         }
     }
 
-    public Point Location{
+    public Point Location
+    {
         get
         {
             return driver.exec<Point>(async Task<object> (Proxy p) =>
             {
-                var o =  await h.BoundingBoxAsync();
+                var o = await h.BoundingBoxAsync();
                 return new Point((int)o!.X, (int)o.Y);
             });
         }
     }
 
-    public Size Size {
+    public Size Size
+    {
         get
         {
             return driver.exec<Size>(async Task<object> (Proxy p) =>
@@ -331,7 +426,8 @@ public class PWebElement : IWebElement
             });
         }
     }
-    public bool Displayed {
+    public bool Displayed
+    {
         get
         {
             return driver.exec<bool>(async Task<object> (Proxy p) =>
@@ -340,6 +436,14 @@ public class PWebElement : IWebElement
             });
         }
     }
+
+    public IWebDriver WrappedDriver => throw new NotImplementedException();
+
+    public Point LocationOnScreenOnceScrolledIntoView => throw new NotImplementedException();
+
+    public ICoordinates Coordinates => throw new NotImplementedException();
+
+    public string ObjectReferenceId => throw new NotImplementedException();
 
     public void Clear()
     {
@@ -425,6 +529,26 @@ public class PWebElement : IWebElement
     public ISearchContext GetShadowRoot()
     {
         return this;
+    }
+
+    public IWebElement FindElement(string mechanism, string value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public ReadOnlyCollection<IWebElement> FindElements(string mechanism, string value)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Screenshot GetScreenshot()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Dictionary<string, object> ToDictionary()
+    {
+        throw new NotImplementedException();
     }
 }
 
