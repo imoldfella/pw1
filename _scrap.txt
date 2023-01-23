@@ -1,0 +1,31 @@
+
+    SessionId sessionId = new SessionId("playwright");
+    private ICommandExecutor executor;
+    protected virtual Response Execute(string driverCommandToExecute, Dictionary<string, object> parameters)
+    {
+        Command commandToExecute = new Command(this.sessionId, driverCommandToExecute, parameters);
+
+        Response commandResponse;
+
+        try
+        {
+            commandResponse = this.executor.Execute(commandToExecute);
+        }
+        catch (System.Net.Http.HttpRequestException e)
+        {
+            commandResponse = new Response
+            {
+                Status = WebDriverResult.UnhandledError,
+                Value = e
+            };
+        }
+
+        if (commandResponse.Status != WebDriverResult.Success)
+        {
+            throw new WebDriverException("The " + commandToExecute + " command returned an unexpected error. ");
+            //UnpackAndThrowOnError(commandResponse, driverCommandToExecute);
+        }
+
+        return commandResponse;
+    }
+

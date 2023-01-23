@@ -1,40 +1,81 @@
 ﻿using Boa.Constrictor.Screenplay;
 using Boa.Constrictor.Selenium;
 using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OpenQA.Selenium.Chrome;
-using pw1;
+using OpenQA.Selenium;
+using static Boa.Constrictor.Selenium.WebLocator;
 
-namespace Boa.Constrictor.Example
+namespace Boa.Constrictor.Example;
+
+
+
+
+[TestClass]
+public class ScreenplayWebUiTest
 {
-    [TestClass]
-    public class ScreenplayWebUiTest
+    private IActor Actor;
+
+    [TestInitialize]
+    public void InitializeBrowser()
     {
-        private IActor Actor;
+        var options = new pw1.PlaywrightOptions(pw1.BrowserType.Chrome,new Microsoft.Playwright.BrowserTypeLaunchOptions{
+            Headless = false
+        });
+        options.AddArgument("headless");   // Remove this line to "see" the browser run
+        var driver = new pw1.PlaywrightDriver(options);
+        Actor = new Actor(name: "Andy", logger: new ConsoleLogger());
+        Actor.Can(BrowseTheWeb.With(driver));
+    }
 
-        [TestInitialize]
-        public void InitializeScreenplay()
-        {
-            var options = new ChromeOptions();
-            options.AddArgument("headless");   // Remove this line to "see" the browser run
-            var driver = new pw1.PlaywrightDriver(options);
-            Actor = new Actor(name: "Andy", logger: new ConsoleLogger());
-            Actor.Can(BrowseTheWeb.With(driver));
-        }
+    [TestCleanup]
+    public void QuitBrowser()
+    {
+        Actor.AttemptsTo(QuitWebDriver.ForBrowser());
+    }
 
-        [TestCleanup]
-        public void QuitBrowser()
-        {
-            Actor.AttemptsTo(QuitWebDriver.ForBrowser());
-        }
-
-        [TestMethod]
-        public void TestDuckDuckGoWebSearch()
-        {
-            Actor.AttemptsTo(Navigate.ToUrl(SearchPage.Url));
-            Actor.AskingFor(ValueAttribute.Of(SearchPage.SearchInput)).Should().BeEmpty();
-            Actor.AttemptsTo(SearchDuckDuckGo.For("panda"));
-            Actor.WaitsUntil(Appearance.Of(ResultPage.ResultLinks), IsEqualTo.True());
-        }
+    [TestMethod]
+    public void TestDuckDuckGoWebSearch()
+    {
+        Actor.AttemptsTo(Navigate.ToUrl(SearchPage.Url));
+        Actor.AskingFor(ValueAttribute.Of(SearchPage.SearchInput)).Should().BeEmpty();
+        Actor.AttemptsTo(SearchDuckDuckGo.For("panda"));
+        Actor.WaitsUntil(Appearance.Of(ResultPage.ResultLinks), IsEqualTo.True());
     }
 }
+
+
+public class SearchDuckDuckGo : ITask
+{
+    public string Phrase { get; }
+
+    private SearchDuckDuckGo(string phrase) =>
+      Phrase = phrase;
+
+    public static SearchDuckDuckGo For(string phrase) =>
+      new SearchDuckDuckGo(phrase);
+
+    public void PerformAs(IActor actor)
+    {
+        actor.AttemptsTo(SendKeys.To(SearchPage.SearchInput, Phrase));
+        actor.AttemptsTo(Click.On(SearchPage.SearchButton));
+    }
+}
+public static class ResultPage
+{
+    public static IWebLocator ResultLinks => L(
+      "DuckDuckGo Result Page Links",
+      By.ClassName("result__a"));
+}
+
+public static class SearchPage
+{
+    public const string Url = "https://www.duckduckgo.com/";
+
+    public static IWebLocator SearchButton => L(
+      "DuckDuckGo Search Button",
+      By.Id("search_button_homepage"));
+
+    public static IWebLocator SearchInput => L(
+      "DuckDuckGo Search Input",
+      By.Id("search_form_input_homepage"));
+}
+

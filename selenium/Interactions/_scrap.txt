@@ -1,0 +1,68 @@
+/*
+        /// <summary>
+        /// Builds the sequence of actions.
+        /// </summary>
+        /// <returns>A composite <see cref="IAction"/> which can be used to perform the actions.</returns>
+        public IAction Build()
+        {
+            // I don't know that this is used, but we could build a new lambda here.
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Gets the <see cref="ILocatable"/> instance of the specified <see cref="IWebElement"/>.
+        /// </summary>
+        /// <param name="element">The <see cref="IWebElement"/> to get the location of.</param>
+        /// <returns>The <see cref="ILocatable"/> of the <see cref="IWebElement"/>.</returns>
+        protected static ILocatable GetLocatableFromElement(IWebElement element)
+        {
+            if (element == null)
+            {
+                return null;
+            }
+
+            ILocatable target = null;
+            IWrapsElement wrapper = element as IWrapsElement;
+            while (wrapper != null)
+            {
+                target = wrapper.WrappedElement as ILocatable;
+                wrapper = wrapper.WrappedElement as IWrapsElement;
+            }
+
+            if (target == null)
+            {
+                target = element as ILocatable;
+            }
+
+            if (target == null)
+            {
+                throw new ArgumentException("The IWebElement object must implement or wrap an element that implements ILocatable.", nameof(element));
+            }
+
+            return target;
+        }
+
+        private T GetDriverAs<T>(IWebDriver driver) where T : class
+        {
+            T driverAsType = driver as T;
+            if (driverAsType == null)
+            {
+                IWrapsDriver wrapper = driver as IWrapsDriver;
+                while (wrapper != null)
+                {
+                    driverAsType = wrapper.WrappedDriver as T;
+                    if (driverAsType != null)
+                    {
+                        driver = wrapper.WrappedDriver;
+                        break;
+                    }
+
+                    wrapper = wrapper.WrappedDriver as IWrapsDriver;
+                }
+            }
+
+            return driverAsType;
+        }
+    }
+}
+*/

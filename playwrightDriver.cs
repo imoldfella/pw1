@@ -6,9 +6,8 @@ using System.Drawing;
 using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Interactions;
-using ProxyFn = Func<Proxy, Task<object>>;
+
 public class Proxy : IAsyncDisposable
 {
     public IPlaywright playwright;
@@ -22,29 +21,21 @@ public class Proxy : IAsyncDisposable
         this.page = page;
     }
 
-    public static async Task<Proxy> create()
-    {
-        var playwright = await Playwright.CreateAsync();
-        var browser = await playwright.Chromium.LaunchAsync();
-        var page = await browser.NewPageAsync();
-        var proxy = new Proxy(playwright, browser, page);
-        return proxy;
-    }
-
     public async ValueTask DisposeAsync()
     {
         await browser.DisposeAsync();
         playwright.Dispose();
     }
 }
-public class PlaywrightDriver : IWebDriver, INavigation, IDisposable, IActionExecutor,
+public class PlaywrightDriver : IWebDriver, INavigation, IDisposable,
 ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
 //,ISupportsPrint, IAllowsFileDetection, IHasCapabilities, IHasCommandExecutor, IHasSessionId, ICustomDriverCommandExecutor, IHasVirtualAuthenticator
 
 {
+    PlaywrightOptions options;
     Semaphore rpc = new Semaphore(0, 1);
     Semaphore reply = new Semaphore(0, 1);
-    Func<Proxy, Task<object>>? fn;
+    List<Func<Proxy, Task<object>>> fn = new List<Func<Proxy, Task<object>>>();
     bool quit = false;
     Exception? e;
     Proxy? proxy;
@@ -66,9 +57,18 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
 
     public static async Task ThreadProc(PlaywrightDriver p)
     {
-        p.proxy = await Proxy.create();
-        await p.proxy.page.GotoAsync("https://playwright.dev");
-        string t = await p.proxy.page.TitleAsync();
+        var playwright = await Playwright.CreateAsync();
+        await  playwright.Firefox.LaunchAsync( );
+        var browser = await p.options.launchAsync(playwright);
+        var context = await browser.NewContextAsync(new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize(1920, 1080),
+            RecordVideoSize = new Size(1920, 1080),
+            RecordVideoDir = "videos"
+        });
+        var page = await browser.NewPageAsync();
+        p.proxy = new Proxy(playwright, browser, page);
+
         while (true)
         {
             p.reply.Release();
@@ -76,7 +76,10 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
             p.rpc.WaitOne();
             try
             {
-                p.proxy.rvalue = await p.fn!(p.proxy);
+                foreach (var e in p.fn)
+                {
+                    p.proxy.rvalue = await e(p.proxy);
+                }
             }
             catch (Exception o)
             {
@@ -88,7 +91,8 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     public T exec<T>(Func<Proxy, Task<object>> fn)
     {
         e = null;
-        this.fn = fn;
+        this.fn.Clear();
+        this.fn.Add(fn);
         rpc.Release();
         reply.WaitOne();
         if (e != null)
@@ -97,9 +101,21 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
         }
         return (T)proxy!.rvalue!;
     }
-
-    public PlaywrightDriver(ChromeOptions? options = null)
+    public void Perform(List<Func<Proxy, Task<object>>> fn)
     {
+        e = null;
+        this.fn = fn;
+        rpc.Release();
+        reply.WaitOne();
+        if (e != null)
+        {
+            throw e;
+        }
+    }
+
+    public PlaywrightDriver(PlaywrightOptions? options = null)
+    {
+        this.options = options ?? new PlaywrightOptions(BrowserType.Chrome);
         Task.Run(async () => await ThreadProc(this));
         reply.WaitOne();
     }
@@ -207,8 +223,6 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
         }
     }
 
-    bool IActionExecutor.IsActionExecutor => true;
-
     public void Close()
     {
         exec<bool>(async Task<object> (Proxy p) =>
@@ -266,61 +280,18 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
         return new PlaywrightTargetLocator(this);
     }
 
-    void IActionExecutor.PerformActions(IList<ActionSequence> actionSequenceList)
-    {
-        if (actionSequenceList == null)
-        {
-            throw new ArgumentNullException(nameof(actionSequenceList), "List of action sequences must not be null");
-        }
-
-        List<object> objectList = new List<object>();
-        foreach (ActionSequence sequence in actionSequenceList)
-        {
-            objectList.Add(sequence.ToDictionary());
-        }
-
-        Dictionary<string, object> parameters = new Dictionary<string, object>();
-        parameters["actions"] = objectList;
-        this.Execute(DriverCommand.Actions, parameters);
-    }
-    SessionId sessionId = new SessionId("playwright");
-    private ICommandExecutor executor;
-    protected virtual Response Execute(string driverCommandToExecute, Dictionary<string, object> parameters)
-    {
-        Command commandToExecute = new Command(this.sessionId, driverCommandToExecute, parameters);
-
-        Response commandResponse;
-
-        try
-        {
-            commandResponse = this.executor.Execute(commandToExecute);
-        }
-        catch (System.Net.Http.HttpRequestException e)
-        {
-            commandResponse = new Response
-            {
-                Status = WebDriverResult.UnhandledError,
-                Value = e
-            };
-        }
-
-        if (commandResponse.Status != WebDriverResult.Success)
-        {
-            throw new WebDriverException("The " + commandToExecute + " command returned an unexpected error. ");
-            //UnpackAndThrowOnError(commandResponse, driverCommandToExecute);
-        }
-
-        return commandResponse;
-    }
-
-    void IActionExecutor.ResetInputState()
-    {
-        this.Execute(DriverCommand.CancelActions, null);
-    }
 
     public Screenshot GetScreenshot()
     {
-        throw new NotImplementedException();
+        return exec<Screenshot>(async Task<object> (Proxy p) =>
+        {
+            var s = await p.page.ScreenshotAsync(new()
+            {
+                Type = ScreenshotType.Png,
+                FullPage = true
+            });
+            return new Screenshot(s);
+        });
     }
 
     public IWebElement FindElement(string mechanism, string value)
@@ -349,11 +320,11 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     }
 }
 
-public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable, ITakesScreenshot, IWebDriverObjectReference
+public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable, ITakesScreenshot //, IWebDriverObjectReference
 {
     // we might need some frame sudo reference for context?
-    PlaywrightDriver driver;
-    IElementHandle h;
+    public PlaywrightDriver driver;
+    public IElementHandle h;
 
     public PWebElement(PlaywrightDriver driver, IElementHandle h)
     {
@@ -500,9 +471,9 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
         });
     }
 
-    // deprecated, 
     public string GetAttribute(string attributeName)
     {
+        // getAttribute is pre-w3c way, use DomAttribute instead
         return driver.exec<string>(async Task<object> (Proxy p) =>
         {
             return await h.GetAttributeAsync(attributeName) ?? "";
@@ -542,11 +513,6 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     }
 
     public Screenshot GetScreenshot()
-    {
-        throw new NotImplementedException();
-    }
-
-    public Dictionary<string, object> ToDictionary()
     {
         throw new NotImplementedException();
     }
