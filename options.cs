@@ -8,27 +8,30 @@ public enum BrowserType
     Safari,
     Firefox
 }
-public class PlaywrightOptions 
+public class PlaywrightOptions
 {
-    List<string> args = new();
-    public void AddArgument(string opts)
-    {
-        args.Add(opts);
-    }
-    BrowserType browserType;
-    BrowserTypeLaunchOptions options;
+    public BrowserType browserType;
+    public BrowserTypeLaunchOptions options;
+    public BrowserNewContextOptions contextOptions;
 
-    public PlaywrightOptions(BrowserType browserType,BrowserTypeLaunchOptions? options = null)
+    public PlaywrightOptions(BrowserType browserType, BrowserTypeLaunchOptions? options = null, BrowserNewContextOptions? contextOptions = null)
     {
-        this.options = options??new BrowserTypeLaunchOptions();
+        this.options = options ?? new BrowserTypeLaunchOptions();
+        this.contextOptions = contextOptions ?? new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize
+            {
+                Width = 1920,
+                Height = 1080
+            },
+            RecordVideoDir = "videos"
+        };
         this.browserType = browserType;
     }
 
 
     public async Task<IBrowser> launchAsync(IPlaywright playwright)
     {
-        options.Args = args.ToArray();
-
         switch (browserType)
         {
             case BrowserType.Chrome:

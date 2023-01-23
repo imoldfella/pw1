@@ -58,15 +58,9 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     public static async Task ThreadProc(PlaywrightDriver p)
     {
         var playwright = await Playwright.CreateAsync();
-        await  playwright.Firefox.LaunchAsync( );
+        await playwright.Firefox.LaunchAsync();
         var browser = await p.options.launchAsync(playwright);
-        var context = await browser.NewContextAsync(new BrowserNewContextOptions
-        {
-            ViewportSize = new ViewportSize{
-                Width=1920, 
-                Height = 1080},
-            RecordVideoDir = "videos"
-        });
+        var context = await browser.NewContextAsync(p.options.contextOptions);
         var page = await browser.NewPageAsync();
         p.proxy = new Proxy(playwright, browser, page);
 

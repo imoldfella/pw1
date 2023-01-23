@@ -62,20 +62,24 @@ public class Actions
 
     public Actions KeyDown(string theKey)
     {
-          return this;
+        throw new NotImplementedException();
+        return this;
     }
     public Actions KeyDown(IWebElement element, string theKey)
     {
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions KeyUp(string theKey)
     {
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions KeyUp(IWebElement element, string theKey)
-    {   
+    {
+        throw new NotImplementedException();
         return this;
     }
 
@@ -105,22 +109,25 @@ public class Actions
 
     public Actions ClickAndHold(IWebElement onElement)
     {
+        throw new NotImplementedException(); throw new NotImplementedException();
         return this;
     }
 
     public Actions ClickAndHold()
     {
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions Release(IWebElement onElement)
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions Release()
     {
+        throw new NotImplementedException();
         return this;
     }
 
@@ -139,63 +146,64 @@ public class Actions
 
     public Actions Click()
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions DoubleClick(IWebElement onElement)
     {
-        
+        throw new NotImplementedException();
         return this;
     }
     public Actions DoubleClick()
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
 
     public Actions MoveToElement(IWebElement toElement)
     {
+        throw new NotImplementedException();
         return this;
     }
 
 
     public Actions MoveToElement(IWebElement toElement, int offsetX, int offsetY)
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions MoveByOffset(int offsetX, int offsetY)
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions ContextClick(IWebElement onElement)
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
 
     public Actions ContextClick()
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
 
     public Actions DragAndDrop(IWebElement source, IWebElement target)
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions DragAndDropToOffset(IWebElement source, int offsetX, int offsetY)
     {
-
+        throw new NotImplementedException();
         return this;
     }
 
@@ -203,25 +211,26 @@ public class Actions
     public Actions ScrollToElement(IWebElement element)
     {
 
-
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions ScrollByAmount(int deltaX, int deltaY)
     {
-;
-
+        ;
+        throw new NotImplementedException();
         return this;
     }
 
     public Actions ScrollFromOrigin(ScrollOrigin scrollOrigin, int deltaX, int deltaY)
     {
-
+        throw new NotImplementedException();
 
         return this;
     }
     public Actions Pause(TimeSpan duration)
     {
+        throw new NotImplementedException();
         return this;
     }
 }

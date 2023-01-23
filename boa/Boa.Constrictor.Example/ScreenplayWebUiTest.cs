@@ -1,12 +1,13 @@
 ﻿using Boa.Constrictor.Screenplay;
 using Boa.Constrictor.Selenium;
 using FluentAssertions;
+using Microsoft.Playwright;
 using OpenQA.Selenium;
 using static Boa.Constrictor.Selenium.WebLocator;
 
 namespace Boa.Constrictor.Example;
 
-
+// this example doesn't work any more, duckduckgo has changed their search pages
 
 
 [TestClass]
@@ -17,10 +18,18 @@ public class ScreenplayWebUiTest
     [TestInitialize]
     public void InitializeBrowser()
     {
-        var options = new pw1.PlaywrightOptions(pw1.BrowserType.Chrome,new Microsoft.Playwright.BrowserTypeLaunchOptions{
+        var options = new pw1.PlaywrightOptions(pw1.BrowserType.Chrome, new BrowserTypeLaunchOptions
+        {
             Headless = false
+        }, new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize
+            {
+                Width = 1920,
+                Height = 1080
+            },
+            RecordVideoDir = "videos"
         });
-        options.AddArgument("headless");   // Remove this line to "see" the browser run
         var driver = new pw1.PlaywrightDriver(options);
         Actor = new Actor(name: "Andy", logger: new ConsoleLogger());
         Actor.Can(BrowseTheWeb.With(driver));
@@ -76,6 +85,6 @@ public static class SearchPage
 
     public static IWebLocator SearchInput => L(
       "DuckDuckGo Search Input",
-      By.Id("search_form_input_homepage"));
+      By.Id("searchbox_input"));
 }
 
