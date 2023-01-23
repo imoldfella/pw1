@@ -4,7 +4,8 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
-
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 using ProxyFn = Func<Proxy, Task<object>>;
 public class Proxy : IAsyncDisposable
 {
@@ -92,7 +93,7 @@ public class PlaywrightDriver : IWebDriver, INavigation, IDisposable
         return (T)proxy!.rvalue!;
     }
 
-    public PlaywrightDriver()
+    public PlaywrightDriver(ChromeOptions? options=null)
     {
         Task.Run(async () => await ThreadProc(this));
         reply.WaitOne();
@@ -526,112 +527,4 @@ public class PlaywrightTargetLocator : ITargetLocator
     }
 }
 
-
-
-public interface IFindsElement
-{
-    IWebElement FindElement(string mechanism, string value);
-    ReadOnlyCollection<IWebElement> FindElements(string mechanism, string value);
-}
-
-public class By
-{
-    public string description;
-
-    public By(string description)
-    {
-        this.description = description;
-    }
-    public override int GetHashCode()
-    {
-        return this.description.GetHashCode();
-    }
-
-    public string Criteria
-    {
-        get { return this.description; }
-    }
-
-    public static bool operator ==(By one, By two)
-    {
-        return one.description == two.description;
-    }
-
-    public static bool operator !=(By one, By two)
-    {
-        return !(one == two);
-    }
-    public override bool Equals(object? obj)
-    {
-        return description.Equals(obj);
-    }
-
-
-    public static By Id(string idToFind)
-    {
-        return new By($"id={idToFind}");
-    }
-
-
-    public static By LinkText(string linkTextToFind)
-    {
-        return new By($"text={linkTextToFind}");
-    }
-
-
-    public static By Name(string nameToFind)
-    {
-        return new By($"name={nameToFind}");
-    }
-
-    public static By XPath(string xpathToFind)
-    {
-        return new By($"xpath=[{xpathToFind}]");
-    }
-
-
-    public static By ClassName(string classNameToFind)
-    {
-        return new By($".{classNameToFind}");
-    }
-
-
-    public static By PartialLinkText(string partialLinkTextToFind)
-    {
-        return new By($"text={partialLinkTextToFind}");
-    }
-
-    public static By TagName(string tagNameToFind)
-    {
-        return new By(tagNameToFind);
-    }
-
-
-    public static By CssSelector(string cssSelectorToFind)
-    {
-        return new By($"css=[{cssSelectorToFind}");
-    }
-
-
-    public virtual IWebElement FindElement(ISearchContext context)
-    {
-        return context.FindElement(this);
-    }
-
-
-    public virtual ReadOnlyCollection<IWebElement> FindElements(ISearchContext context)
-    {
-        return context.FindElements(this);
-    }
-
-
-    public override string ToString()
-    {
-        return this.description;
-    }
-
-
-
-
-}
 
