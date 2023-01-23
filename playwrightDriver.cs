@@ -62,8 +62,9 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
         var browser = await p.options.launchAsync(playwright);
         var context = await browser.NewContextAsync(new BrowserNewContextOptions
         {
-            ViewportSize = new ViewportSize(1920, 1080),
-            RecordVideoSize = new Size(1920, 1080),
+            ViewportSize = new ViewportSize{
+                Width=1920, 
+                Height = 1080},
             RecordVideoDir = "videos"
         });
         var page = await browser.NewPageAsync();
