@@ -26,9 +26,7 @@ public class PwProxy : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await context.Tracing.StopAsync(new(){
-            Path = "/Users/jim/dev/test/trace.zip"
-        });
+
         await page.CloseAsync();
         await context.CloseAsync();
         await browser.DisposeAsync();
@@ -119,6 +117,9 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
                 p.e = o;
             }
         }
+        await context.Tracing.StopAsync(new(){
+            Path = p.options.trace
+        });
         await p.proxy.DisposeAsync();
         p.reply.Release();
     }
@@ -149,7 +150,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
 
     public PlaywrightDriver(PlaywrightOptions? options = null)
     {
-        this.options = options ?? new PlaywrightOptions(BrowserType.Chrome);
+        this.options = options ?? new PlaywrightOptions();
         Task.Run(async () => await ThreadProc(this));
         reply.WaitOne();
     }

@@ -14,9 +14,10 @@ public class PlaywrightOptions
     public BrowserTypeLaunchOptions options;
     public BrowserNewContextOptions contextOptions;
 
-    public PlaywrightOptions(BrowserType browserType, BrowserTypeLaunchOptions? options = null, BrowserNewContextOptions? contextOptions = null)
+    public string trace {get;set;} = "";
+    public PlaywrightOptions()
     {
-        this.options = options ?? new BrowserTypeLaunchOptions();
+        this.options =  new BrowserTypeLaunchOptions();
         this.contextOptions = contextOptions ?? new BrowserNewContextOptions
         {
             ViewportSize = new ViewportSize
@@ -26,7 +27,7 @@ public class PlaywrightOptions
             },
             RecordVideoDir = "videos"
         };
-        this.browserType = browserType;
+        this.browserType = BrowserType.Chrome;
     }
 
 }

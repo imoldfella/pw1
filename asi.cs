@@ -5,15 +5,45 @@ using Microsoft.Playwright;
 using OpenQA.Selenium;
 using static Boa.Constrictor.Selenium.WebLocator;
 
-namespace Boa.Constrictor.Example;
-
+namespace pw1.Test;
 // this example doesn't work any more, duckduckgo has changed their search pages
 
-public class TestScenario : IDisposable
+public class AsiActor : Actor, IDisposable
 {
+    pw1.PlaywrightDriver driver;
+
+    public AsiActor(TestContext context, string name)
+    : base(logger: new ConsoleLogger())
+    {
+        var images = "/users/jim/dev/test"; //context!.TestResultsDirectory + "/../../images/";
+        var options = new pw1.PlaywrightOptions
+        {
+            browserType = pw1.BrowserType.Chrome,
+            options = new BrowserTypeLaunchOptions
+            {
+                Headless = true,
+                Args = new string[] { "--ignore-certificate-errors" },
+                //TracesDir = "/Users/jim/dev/test/traces"
+            },
+            contextOptions = new BrowserNewContextOptions
+            {
+                IgnoreHTTPSErrors = true,
+                ViewportSize = new ViewportSize
+                {
+                    Width = 1920,
+                    Height = 1080
+                },
+                //RecordVideoDir = "/Users/jim/dev/test/videos",
+            },
+            trace = images + "/" + context.TestName + ".zip"
+        };
+        driver = new pw1.PlaywrightDriver(options);
+        Can(BrowseTheWeb.With(driver));
+    }
     public void Dispose()
     {
-        throw new NotImplementedException();
+        // driver.GetScreenshot().SaveAsFile("/Users/jim/dev/test/screenshot.png", ScreenshotImageFormat.Png);
+        AttemptsTo(QuitWebDriver.ForBrowser());
     }
 }
 
@@ -23,56 +53,27 @@ public class TestScenario : IDisposable
 [TestClass]
 public class AsiWebUiTest
 {
-    private IActor actor;
-    pw1.PlaywrightDriver driver;
-
-    TestContext? testContext { set; get;}
-
-   
-    public void InitializeBrowser()
-    {
-        var options = new pw1.PlaywrightOptions(pw1.BrowserType.Chrome, new BrowserTypeLaunchOptions
-        {
-            Headless = true,
-            Args = new string[] { "--ignore-certificate-errors"},
-            //TracesDir = "/Users/jim/dev/test/traces"
-        }, new BrowserNewContextOptions
-        {
-            IgnoreHTTPSErrors = true,
-            ViewportSize = new ViewportSize
-            {
-                Width = 1920,
-                Height = 1080
-            },
-            RecordVideoDir = "/Users/jim/dev/test/videos",
-        });
-        driver = new pw1.PlaywrightDriver(options);
-        actor = new Actor(name: "Andy", logger: new ConsoleLogger());
-        actor.Can(BrowseTheWeb.With(driver));
-    }
-
-    [TestCleanup]
-    public void QuitBrowser()
-    {
-        driver.GetScreenshot().SaveAsFile("/Users/jim/dev/test/screenshot.png", ScreenshotImageFormat.Png);
-        actor.AttemptsTo(QuitWebDriver.ForBrowser());
-    }
+    public TestContext? TestContext { set; get; }
 
     [TestMethod]
     public void TestAsi()
     {
-        actor.AttemptsTo(Navigate.ToUrl(StaffLoginPage.Url));
-        actor.AttemptsTo(StaffLogin.For("carlyk", "demo123"));
-                actor.WaitsUntil(Appearance.Of(StaffNavigation1Page.communityDashboardloadup), IsEqualTo.True());
-
+        using (var actor = new AsiActor(TestContext, "asoria"))
+        {
+            actor.AttemptsTo(Navigate.ToUrl(StaffLoginPage.Url));
+            actor.AttemptsTo(StaffLogin.For("carlyk", "demo123"));
+            actor.WaitsUntil(Appearance.Of(StaffNavigation1Page.communityDashboardloadup), IsEqualTo.True());
+        }
     }
     [TestMethod]
     public void TestAsi2()
     {
-        actor.AttemptsTo(Navigate.ToUrl(StaffLoginPage.Url));
-        actor.AttemptsTo(StaffLogin.For("asoria", "demo123"));
-                actor.WaitsUntil(Appearance.Of(StaffNavigation1Page.communityDashboardloadup), IsEqualTo.True());
-
+        using (var actor = new AsiActor(TestContext, "asoria"))
+        {
+            actor.AttemptsTo(Navigate.ToUrl(StaffLoginPage.Url));
+            actor.AttemptsTo(StaffLogin.For("asoria", "demo123"));
+            actor.WaitsUntil(Appearance.Of(StaffNavigation1Page.communityDashboardloadup), IsEqualTo.True());
+        }
     }
 }
 
@@ -95,7 +96,7 @@ public class StaffLogin : ITask
         actor.AttemptsTo(SendKeys.To(StaffLoginPage.Username, user));
         actor.AttemptsTo(SendKeys.To(StaffLoginPage.Password, password));
         actor.AttemptsTo(Click.On(StaffLoginPage.Submit));
-       
+
     }
 }
 public class StaffLoginPage
@@ -114,9 +115,9 @@ public class StaffLoginPage
         "Sign in",
         By.Id("ctl01_TemplateBody_WebPartManager1_gwpciSignIn_ciSignIn_SubmitButton"));
 
-      public static IWebLocator ErrorMessage => L(
-        "error message",
-        By.ClassName("iPartRenderError"));
+    public static IWebLocator ErrorMessage => L(
+      "error message",
+      By.ClassName("iPartRenderError"));
 }
 
 public class StaffNavigation1Page
