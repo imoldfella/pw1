@@ -8,7 +8,7 @@
 # Changelog
 
 This file documents all notable changes to the
-[`Boa.Constrictor.Screenplay`](https://www.nuget.org/packages/Boa.Constrictor.Screenplay) project and its unit tests
+[`Boa.Constrictor.Playwright`](https://www.nuget.org/packages/Boa.Constrictor.Playwright) project and its unit tests
 for each NuGet package release.
 
 Its format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -22,14 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.3] - 2022-12-13
 
-### Added
-
-- Wrote new `AnswerCacheTest` unit tests for different types and different question objects
-
 ### Changed
 
 - Created separate changelog files for each project (except unit tests).
-- Converted `AnswerCache` to use a `Hashtable` instead of a pointlessly generic `IDictionary`
 
 
 ## [3.0.2] - 2022-12-07
@@ -77,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Renamed the following namespaces:
-  - `Boa.Constrictor.WebDriver` -> `Boa.Constrictor.`
+  - `Boa.Constrictor.WebDriver` -> `Boa.Constrictor.Playwright`
   - `Boa.Constrictor.Dumping` -> `Boa.Constrictor.Screenplay`
   - `Boa.Constrictor.Logging` -> `Boa.Constrictor.Screenplay`
   - `Boa.Constrictor.Safety` -> `Boa.Constrictor.Screenplay`

@@ -1,14 +1,11 @@
+PlaywrightDriver that seeks to be compatible with Selenium/W3C WebDriver. Lift and shift your selenium based tests to playwright.
 
-# copied from boa constrictor
+Complete Work-in-progress, Proof-of-concept. Will be published under MIT or ISC license when ready, but don't suggest you do anything with it currently.
 
-Still working out the best way to do this. The nuget package pulls in selenium which defeats the purpose of this POC.
 
-https://github.com/microsoft/playwright/issues/10455
+1. Boa Constrictor is copied unchanged into this project. Nothing notably changed. I'm still working out details of how to integrate upstream.
 
-For anyone finding this issue, I finally figured out what I was doing wrong. If you are serving your own trace files and want to view them via https://trace.playwright.dev, you will need:
+2. Selenium is hacked to pieces, but there is still lots of code in the Selenium folder here that is not our copyright and used under the Apache license. 
 
-To serve your files with a Access-Control-Allow-Origin: https://trace.playwright.dev header (or *)
-To allow HEAD requests, and to have the above CORS header on this response
-A Content-Length header on the HEAD reponse.
-The last 2 points took me a while to figure out.
+
 
