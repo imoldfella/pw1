@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Globalization;
 using pw1;
 using OpenQA.Selenium;
+using Microsoft.Playwright;
 // we can have lambda's instead of actions.
 
 namespace OpenQA.Selenium.Interactions;
@@ -41,7 +42,7 @@ public interface ICoordinates
 public class Actions
 {
     PlaywrightDriver driver;
-    List<Func<Proxy, Task<object>>> actions = new();
+    List<Func<PwProxy, Task<object>>> actions = new();
 
     private readonly TimeSpan DefaultScrollDuration = TimeSpan.FromMilliseconds(250);
     private readonly TimeSpan DefaultMouseMoveDuration = TimeSpan.FromMilliseconds(250);
@@ -146,45 +147,64 @@ public class Actions
 
     public Actions Click()
     {
-        throw new NotImplementedException();
+        actions.Add(async (proxy) =>
+        {
+            var x= proxy.current; if (x==null) return false;
+            await x.ClickAsync();
+            return true;
+        });
         return this;
     }
 
     public Actions DoubleClick(IWebElement onElement)
     {
-        throw new NotImplementedException();
+        actions.Add(async (proxy) =>
+        {
+            var x = (PWebElement)onElement;
+            await x.h.ClickAsync(new ElementHandleClickOptions { ClickCount = 2 });
+            return true;
+        });
         return this;
     }
     public Actions DoubleClick()
     {
-        throw new NotImplementedException();
+        actions.Add(async (proxy) =>
+        {
+            var x= proxy.current; if (x==null) return false;
+            await x.ClickAsync(new ElementHandleClickOptions { ClickCount = 2 });
+            return true;
+        });
         return this;
     }
 
 
     public Actions MoveToElement(IWebElement toElement)
     {
-        throw new NotImplementedException();
+        var e = ((PWebElement)toElement).h;
+        actions.Add(async (proxy) =>
+        {
+            proxy.current = e;
+            await Task.CompletedTask;
+            return true;
+        });
         return this;
     }
 
 
     public Actions MoveToElement(IWebElement toElement, int offsetX, int offsetY)
     {
-        throw new NotImplementedException();
-        return this;
+        return MoveToElement(toElement);
     }
 
     public Actions MoveByOffset(int offsetX, int offsetY)
     {
         throw new NotImplementedException();
-        return this;
+ 
     }
 
     public Actions ContextClick(IWebElement onElement)
     {
         throw new NotImplementedException();
-        return this;
     }
 
 

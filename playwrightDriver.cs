@@ -8,21 +8,29 @@ using Microsoft.Playwright.MSTest;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Interactions;
 
-public class Proxy : IAsyncDisposable
+public class PwProxy : IAsyncDisposable
 {
     public IPlaywright playwright;
     public IBrowser browser;
     public IPage page;
     public object? rvalue = null;
-    public Proxy(IPlaywright p, IBrowser b, IPage page)
+    public IElementHandle? current=null;
+    public IBrowserContext context;
+    public PwProxy(IPlaywright p, IBrowser b, IPage page, IBrowserContext context)
     {
         this.playwright = p;
         this.browser = b;
         this.page = page;
+        this.context = context;
     }
 
     public async ValueTask DisposeAsync()
     {
+        await context.Tracing.StopAsync(new(){
+            Path = "/Users/jim/dev/test/trace.zip"
+        });
+        await page.CloseAsync();
+        await context.CloseAsync();
         await browser.DisposeAsync();
         playwright.Dispose();
     }
@@ -35,10 +43,10 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     PlaywrightOptions options;
     Semaphore rpc = new Semaphore(0, 1);
     Semaphore reply = new Semaphore(0, 1);
-    List<Func<Proxy, Task<object>>> fn = new List<Func<Proxy, Task<object>>>();
+    List<Func<PwProxy, Task<object>>> fn = new List<Func<PwProxy, Task<object>>>();
     bool quit = false;
     Exception? e;
-    Proxy? proxy;
+    PwProxy? proxy;
 
     public void Dispose()
     {
@@ -59,15 +67,45 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     {
         var playwright = await Playwright.CreateAsync();
         await playwright.Firefox.LaunchAsync();
-        var browser = await p.options.launchAsync(playwright);
-        var context = await browser.NewContextAsync(p.options.contextOptions);
-        var page = await browser.NewPageAsync();
-        p.proxy = new Proxy(playwright, browser, page);
+        IBrowser? browser = null;
 
-        while (true)
+        var opt = p.options.options;
+        switch (p.options.browserType)
+        {
+            case BrowserType.Chrome:
+                browser = await playwright.Chromium.LaunchAsync(opt);
+                break;
+            case BrowserType.Edge:
+                // channel msedge
+                browser = await playwright.Chromium.LaunchAsync(opt);
+                break;
+            case BrowserType.Safari:
+                browser = await playwright.Webkit.LaunchAsync(opt);
+                break;
+            case BrowserType.Firefox:
+                browser = await playwright.Firefox.LaunchAsync(opt);
+                break;
+        }
+        if (browser == null)
+        {
+            throw new Exception("Browser not found");
+        }
+
+        var context = await browser.NewContextAsync(p.options.contextOptions);
+        var page = await context.NewPageAsync();
+        p.proxy = new PwProxy(playwright, browser, page,context);
+        await context.Tracing.StartAsync(new TracingStartOptions
+        {
+            Screenshots = true,
+            Snapshots = true,
+            //Sources = true,
+            //Name = "trace",
+            
+        });
+        
+        while (!p.quit)
         {
             p.reply.Release();
-            if (p.quit) break;
             p.rpc.WaitOne();
             try
             {
@@ -82,8 +120,9 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
             }
         }
         await p.proxy.DisposeAsync();
+        p.reply.Release();
     }
-    public T exec<T>(Func<Proxy, Task<object>> fn)
+    public T exec<T>(Func<PwProxy, Task<object>> fn)
     {
         e = null;
         this.fn.Clear();
@@ -96,7 +135,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
         }
         return (T)proxy!.rvalue!;
     }
-    public void Perform(List<Func<Proxy, Task<object>>> fn)
+    public void Perform(List<Func<PwProxy, Task<object>>> fn)
     {
         e = null;
         this.fn = fn;
@@ -119,7 +158,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     {
         get
         {
-            return exec<string>(async Task<object> (Proxy p) =>
+            return exec<string>(async Task<object> (PwProxy p) =>
             {
                 await Task.CompletedTask;
                 return p.page.Url;
@@ -135,14 +174,14 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     {
         get
         {
-            return exec<string>(async Task<object> (Proxy p) =>
+            return exec<string>(async Task<object> (PwProxy p) =>
                  await p.page.TitleAsync())!;
         }
     }
 
     public void Back()
     {
-        exec<bool>(async Task<object> (Proxy p) =>
+        exec<bool>(async Task<object> (PwProxy p) =>
         {
             await p.page.GoBackAsync();
             return true;
@@ -150,7 +189,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     }
     public void Forward()
     {
-        exec<bool>(async Task<object> (Proxy p) =>
+        exec<bool>(async Task<object> (PwProxy p) =>
         {
             await p.page.GoForwardAsync();
             return true;
@@ -159,7 +198,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     }
     public void GoToUrl(string url)
     {
-        exec<bool>(async Task<object> (Proxy p) =>
+        exec<bool>(async Task<object> (PwProxy p) =>
         {
             await p.page.GotoAsync(url);
             return true;
@@ -172,7 +211,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     }
     public void Refresh()
     {
-        exec<bool>(async Task<object> (Proxy p) =>
+        exec<bool>(async Task<object> (PwProxy p) =>
         {
             await p.page.ReloadAsync();
             return true;
@@ -183,7 +222,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     {
         get
         {
-            return exec<string>(async Task<object> (Proxy p) =>
+            return exec<string>(async Task<object> (PwProxy p) =>
             {
                 return await p.page.ContentAsync();
             });
@@ -220,7 +259,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
 
     public void Close()
     {
-        exec<bool>(async Task<object> (Proxy p) =>
+        exec<bool>(async Task<object> (PwProxy p) =>
         {
             await p.page.CloseAsync();
             return true;
@@ -235,7 +274,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     // if this doesn't find, it throws.
     public IWebElement FindElement(By by, IElementHandle? root)
     {
-        return exec<PWebElement>(async Task<object> (Proxy p) =>
+        return exec<PWebElement>(async Task<object> (PwProxy p) =>
          {
              var h = await p.page.WaitForSelectorAsync(by.description, new()
              {
@@ -252,7 +291,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
     }
     public ReadOnlyCollection<IWebElement> FindElements(By by, IElementHandle? root)
     {
-        return exec<ReadOnlyCollection<IWebElement>>(async Task<object> (Proxy p) =>
+        return exec<ReadOnlyCollection<IWebElement>>(async Task<object> (PwProxy p) =>
         {
             var a = await p.page.QuerySelectorAllAsync(by.description);
             var lst = a.Select(e => (IWebElement)new PWebElement(this, e)).ToList();
@@ -278,7 +317,7 @@ ISearchContext, IJavaScriptExecutor, IFindsElement, ITakesScreenshot
 
     public Screenshot GetScreenshot()
     {
-        return exec<Screenshot>(async Task<object> (Proxy p) =>
+        return exec<Screenshot>(async Task<object> (PwProxy p) =>
         {
             var s = await p.page.ScreenshotAsync(new()
             {
@@ -331,7 +370,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     {
         get
         {
-            return driver.exec<string>(async Task<object> (Proxy p) =>
+            return driver.exec<string>(async Task<object> (PwProxy p) =>
             {
                 return await h.GetPropertyAsync("tagName");
             });
@@ -341,7 +380,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     {
         get
         {
-            return driver.exec<string>(async Task<object> (Proxy p) =>
+            return driver.exec<string>(async Task<object> (PwProxy p) =>
             {
                 return await h.TextContentAsync() ?? "";
             });
@@ -351,7 +390,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     {
         get
         {
-            return driver.exec<bool>(async Task<object> (Proxy p) =>
+            return driver.exec<bool>(async Task<object> (PwProxy p) =>
             {
                 return await h.IsEnabledAsync();
             });
@@ -361,7 +400,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     {
         get
         {
-            return driver.exec<bool>(async Task<object> (Proxy p) =>
+            return driver.exec<bool>(async Task<object> (PwProxy p) =>
             {
                 await Task.CompletedTask;
                 return true;
@@ -373,7 +412,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     {
         get
         {
-            return driver.exec<Point>(async Task<object> (Proxy p) =>
+            return driver.exec<Point>(async Task<object> (PwProxy p) =>
             {
                 var o = await h.BoundingBoxAsync();
                 return new Point((int)o!.X, (int)o.Y);
@@ -385,7 +424,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     {
         get
         {
-            return driver.exec<Size>(async Task<object> (Proxy p) =>
+            return driver.exec<Size>(async Task<object> (PwProxy p) =>
             {
                 var o = await h.BoundingBoxAsync();
                 return new Size((int)o!.Width, (int)o.Height);
@@ -396,7 +435,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     {
         get
         {
-            return driver.exec<bool>(async Task<object> (Proxy p) =>
+            return driver.exec<bool>(async Task<object> (PwProxy p) =>
             {
                 return await h.IsVisibleAsync();
             });
@@ -417,7 +456,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     }
     public void SendKeys(string text)
     {
-        driver.exec<bool>(async Task<object> (Proxy p) =>
+        driver.exec<bool>(async Task<object> (PwProxy p) =>
         {
             await h.FillAsync(text);
             return true;
@@ -427,7 +466,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
 
     public void Click()
     {
-        driver.exec<bool>(async Task<object> (Proxy p) =>
+        driver.exec<bool>(async Task<object> (PwProxy p) =>
         {
             await h.ClickAsync();
             return true;
@@ -436,7 +475,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     public void Submit()
     {
         // clasms that we can submit on any element in the form
-        driver.exec<bool>(async Task<object> (Proxy p) =>
+        driver.exec<bool>(async Task<object> (PwProxy p) =>
         {
             await h.ClickAsync();
             return true;
@@ -460,7 +499,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     public string GetCssValue(string propertyName)
     {
         // window.getComputedStyle(e).getPropertyValue("color")
-        return driver.exec<string>(async Task<object> (Proxy p) =>
+        return driver.exec<string>(async Task<object> (PwProxy p) =>
         {
             return await p.page.Locator("div").EvaluateAsync($"e => window.getComputedStyle(e).{propertyName}");
         });
@@ -469,14 +508,14 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
     public string GetAttribute(string attributeName)
     {
         // getAttribute is pre-w3c way, use DomAttribute instead
-        return driver.exec<string>(async Task<object> (Proxy p) =>
+        return driver.exec<string>(async Task<object> (PwProxy p) =>
         {
-            return await h.GetAttributeAsync(attributeName) ?? "";
+            return (await h.GetPropertyAsync(attributeName))?.ToString()??"";
         });
     }
     public string GetDomAttribute(string attributeName)
     {
-        return driver.exec<string>(async Task<object> (Proxy p) =>
+        return driver.exec<string>(async Task<object> (PwProxy p) =>
       {
           return await h.GetAttributeAsync(attributeName) ?? "";
       });
@@ -484,7 +523,7 @@ public class PWebElement : IWebElement, IFindsElement, IWrapsDriver, ILocatable,
 
     public string GetDomProperty(string propertyName)
     {
-        return driver.exec<string>(async Task<object> (Proxy p) =>
+        return driver.exec<string>(async Task<object> (PwProxy p) =>
          {
              var o = await h.GetPropertyAsync(propertyName);
              var s = o.ToString();

@@ -81,6 +81,7 @@ public class By
         return this.description.GetHashCode();
     }
 
+
     public string Criteria
     {
         get { return this.description; }
@@ -122,12 +123,13 @@ public class By
         return new By($"xpath=[{xpathToFind}]");
     }
 
-
+    public static By Placeholder(string x) => new By($"[placeholder='{x}']");
     public static By ClassName(string classNameToFind)
     {
         return new By($".{classNameToFind}");
     }
 
+    public static By Value(string x) => By.CssSelector($"input[value='{x}']");
 
     public static By PartialLinkText(string partialLinkTextToFind)
     {
@@ -142,7 +144,7 @@ public class By
 
     public static By CssSelector(string cssSelectorToFind)
     {
-        return new By($"css=[{cssSelectorToFind}");
+        return new By($"[{cssSelectorToFind}]");
     }
 
     public virtual IWebElement FindElement(ISearchContext context)

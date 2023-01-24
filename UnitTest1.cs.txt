@@ -51,6 +51,7 @@ public class UnitTest2
         // exec steps, but leave the return the initalized steps.
     }
     [TestMethod]
+    [Ignore]
     public void Test1()
     {
         using (var driver = new PlaywrightDriver())
